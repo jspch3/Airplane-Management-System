@@ -1,0 +1,78 @@
+package com.ams.domain;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+@Entity
+@Table(name = "flights")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Flight {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long flightId;
+
+    @NotNull(message = "Carrier ID is required")
+    private Long carrierId;
+
+    @NotBlank(message = "Carrier Name is required")
+    private String carrierName;
+
+    @NotBlank(message = "Origin is required")
+    private String origin;
+
+    @NotBlank(message = "Destination is required")
+    private String destination;
+
+    @NotBlank(message = "Departure time is required")
+    private String departureTime;
+
+    @NotBlank(message = "Arrival time is required")
+    private String arrivalTime;
+
+    @NotNull(message = "AirFare is required")
+    @Min(value = 1, message = "AirFare must be greater than 0")
+    @Builder.Default
+    private Double airFare = 5000.0;
+
+    @NotNull(message = "Economy Class Fare is required")
+    @Min(value = 1, message = "Economy Class Fare must be greater than 0")
+    @Builder.Default
+    private Double economyClassFare = 5000.0;
+
+    @NotNull(message = "Business Class Fare is required")
+    @Min(value = 1, message = "Business Class Fare must be greater than 0")
+    @Builder.Default
+    private Double businessClassFare = 10000.0;
+
+    @NotNull(message = "Executive Class Fare is required")
+    @Min(value = 1, message = "Executive Class Fare must be greater than 0")
+    @Builder.Default
+    private Double executiveClassFare = 15000.0;
+
+    @Min(value = 0, message = "Economy capacity cannot be negative")
+    @Builder.Default
+    private Integer seatCapacityEconomyClass = 150;
+
+    @Min(value = 0, message = "Business capacity cannot be negative")
+    @Builder.Default
+    private Integer seatCapacityBusinessClass = 30;
+
+    @Min(value = 0, message = "Executive capacity cannot be negative")
+    @Builder.Default
+    private Integer seatCapacityExecutiveClass = 15;
+
+    @Builder.Default
+    private Integer bookedSeatsEconomyClass = 0;
+
+    @Builder.Default
+    private Integer bookedSeatsExecutiveClass = 0;
+
+    @Builder.Default
+    private Integer bookedSeatsBusinessClass = 0;
+}
