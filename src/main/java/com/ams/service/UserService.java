@@ -1,12 +1,15 @@
 package com.ams.service;
 
 import com.ams.domain.User;
+import com.ams.dto.ForgotPasswordRequestDTO.*;
 import com.ams.dto.LoginRequestDTO;
 import com.ams.dto.LoginResponseDTO;
 import com.ams.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -15,6 +18,16 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    private void validateAge(LocalDate dob) {
+        if (dob == null) {
+            throw new IllegalArgumentException("Date of Birth is required");
+        }
+        long age = ChronoUnit.YEARS.between(dob, LocalDate.now());
+        if (age < 18 || age > 120) {
+            throw new IllegalArgumentException("User age must be strictly between 18 and 120 years old");
+        }
+    }
+
     public User registerUser(User user) {
         if (userRepository.existsByUserName(user.getUserName())) {
             throw new IllegalArgumentException("Username '" + user.getUserName() + "' is already taken");
@@ -22,6 +35,8 @@ public class UserService {
         if (userRepository.existsByEmailId(user.getEmailId())) {
             throw new IllegalArgumentException("Email ID '" + user.getEmailId() + "' is already registered");
         }
+
+        validateAge(user.getDob());
 
         if (user.getRole() == null || user.getRole().isBlank()) {
             user.setRole("CUSTOMER");
@@ -39,6 +54,7 @@ public class UserService {
         if (userRepository.existsByUserName(user.getUserName())) {
             throw new IllegalArgumentException("Admin username '" + user.getUserName() + "' is already taken");
         }
+        validateAge(user.getDob());
         return userRepository.save(user);
     }
 
@@ -58,6 +74,40 @@ public class UserService {
                 .emailId(user.getEmailId())
                 .message("Login successful")
                 .build();
+    }
+
+    public MaskPhoneResponse getMaskedPhoneForIdentity(String identity) {
+        User user = userRepository.findByUserName(identity)
+                .or(() -> userRepository.findByEmailId(identity))
+                .orElseThrow(() -> new IllegalArgumentException("No account found with username or email: " + identity));
+
+        String rawPhone = user.getPhone();
+        String masked = "*******" + (rawPhone.length() >= 2 ? rawPhone.substring(rawPhone.length() - 2) : "00");
+
+        return MaskPhoneResponse.builder()
+                .userName(user.getUserName())
+                .maskedPhone(masked)
+                .build();
+    }
+
+    public boolean verifyMobileNumber(String userName, String mobileNumber) {
+        User user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userName));
+
+        if (!user.getPhone().equals(mobileNumber)) {
+            throw new IllegalArgumentException("Mobile number not matched");
+        }
+
+        return true;
+    }
+
+    public void resetPassword(String userName, String mobileNumber, String newPassword) {
+        verifyMobileNumber(userName, mobileNumber);
+        User user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userName));
+
+        user.setPassword(newPassword);
+        userRepository.save(user);
     }
 
     public User getUserById(Long userId) {
@@ -89,6 +139,7 @@ public class UserService {
             existing.setZipCode(updatedUser.getZipCode());
         }
         if (updatedUser.getDob() != null) {
+            validateAge(updatedUser.getDob());
             existing.setDob(updatedUser.getDob());
         }
         if (updatedUser.getCustomerCategory() != null && !updatedUser.getCustomerCategory().isBlank()) {

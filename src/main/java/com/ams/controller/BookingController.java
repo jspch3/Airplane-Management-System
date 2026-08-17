@@ -42,8 +42,14 @@ public class BookingController {
 
     // US011: Cancel Booking / Partial Cancellation
     @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<Booking> cancelBooking(@PathVariable Long bookingId, @Valid @RequestBody PartialCancelRequestDTO cancelRequest) {
-        Booking updatedBooking = bookingService.cancelPartialOrFull(bookingId, cancelRequest);
+    public ResponseEntity<Booking> cancelBooking(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody PartialCancelRequestDTO cancelRequest,
+            @RequestHeader(value = "X-User-Role", required = false) String roleHeader,
+            @RequestParam(value = "role", required = false) String roleParam) {
+        
+        String role = roleHeader != null ? roleHeader : roleParam;
+        Booking updatedBooking = bookingService.cancelPartialOrFull(bookingId, cancelRequest, role);
         return ResponseEntity.ok(updatedBooking);
     }
 }

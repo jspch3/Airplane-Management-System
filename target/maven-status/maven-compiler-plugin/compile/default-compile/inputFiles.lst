@@ -13,6 +13,7 @@ C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\c
 C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\domain\User.java
 C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\dto\BookingRequestDTO.java
 C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\dto\FieldErrorDTO.java
+C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\dto\ForgotPasswordRequestDTO.java
 C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\dto\LoginRequestDTO.java
 C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\dto\LoginResponseDTO.java
 C:\Users\chbha\.gemini\antigravity\scratch\ams-fullstack\backend\src\main\java\com\ams\dto\PartialCancelRequestDTO.java

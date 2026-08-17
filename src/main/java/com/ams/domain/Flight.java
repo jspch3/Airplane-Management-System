@@ -17,6 +17,9 @@ public class Flight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long flightId;
 
+    @Version
+    private Long version;
+
     @NotNull(message = "Carrier ID is required")
     private Long carrierId;
 
@@ -55,15 +58,18 @@ public class Flight {
     @Builder.Default
     private Double executiveClassFare = 15000.0;
 
-    @Min(value = 0, message = "Economy capacity cannot be negative")
+    @Min(value = 1, message = "Economy capacity must be at least 1")
+    @Max(value = 1000, message = "Economy capacity cannot exceed 1000")
     @Builder.Default
     private Integer seatCapacityEconomyClass = 150;
 
-    @Min(value = 0, message = "Business capacity cannot be negative")
+    @Min(value = 1, message = "Business capacity must be at least 1")
+    @Max(value = 1000, message = "Business capacity cannot exceed 1000")
     @Builder.Default
     private Integer seatCapacityBusinessClass = 30;
 
-    @Min(value = 0, message = "Executive capacity cannot be negative")
+    @Min(value = 1, message = "Executive capacity must be at least 1")
+    @Max(value = 1000, message = "Executive capacity cannot exceed 1000")
     @Builder.Default
     private Integer seatCapacityExecutiveClass = 15;
 

@@ -21,6 +21,9 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long bookingId;
 
+    @Column(length = 20, unique = true)
+    private String pnr;
+
     @NotNull(message = "User ID is required")
     @Column(nullable = false)
     private Long userId;

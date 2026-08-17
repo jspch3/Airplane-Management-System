@@ -20,7 +20,7 @@ public class User {
     private Long userId;
 
     @NotBlank(message = "Username is required")
-    @Size(min = 4, max = 30, message = "Username must be between 4 and 30 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9]{4,30}$", message = "Username must be 4 to 30 alphanumeric characters (symbols and underscore-only strings are rejected)")
     @Column(nullable = false, unique = true, length = 30)
     private String userName;
 
@@ -45,7 +45,7 @@ public class User {
     private String phone;
 
     @NotBlank(message = "Email ID is required")
-    @Email(message = "Email ID must be a valid email format")
+    @Pattern(regexp = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "Email ID must be a valid RFC-compliant email address")
     @Column(nullable = false, length = 100)
     private String emailId;
 
@@ -56,15 +56,17 @@ public class User {
     private String address2;
 
     @NotBlank(message = "City is required")
+    @Pattern(regexp = "^[A-Za-z\\s]{3,50}$", message = "City must contain at least 3 alphabetic characters")
     @Column(nullable = false, length = 50)
     private String city;
 
     @NotBlank(message = "State is required")
+    @Pattern(regexp = "^[A-Za-z\\s]{3,50}$", message = "State must contain at least 3 alphabetic characters")
     @Column(nullable = false, length = 50)
     private String state;
 
     @NotBlank(message = "Zip code is required")
-    @Pattern(regexp = "^[0-9]{5,6}$", message = "Zip code must be 5 or 6 digits")
+    @Pattern(regexp = "^[1-9][0-9]{5}$", message = "Pincode must be a 6-digit Indian postal code starting 1-9")
     @Column(nullable = false, length = 10)
     private String zipCode;
 

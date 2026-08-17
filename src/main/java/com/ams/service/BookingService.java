@@ -9,7 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,16 +28,49 @@ public class BookingService {
     private final UserRepository userRepository;
     private final CarrierRepository carrierRepository;
 
+    private static final String PNR_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    public String generateUniquePNR() {
+        StringBuilder pnr = new StringBuilder("PNR-");
+        for (int i = 0; i < 6; i++) {
+            pnr.append(PNR_CHARACTERS.charAt(RANDOM.nextInt(PNR_CHARACTERS.length())));
+        }
+        return pnr.toString();
+    }
+
+    private boolean isPastFlight(Booking booking) {
+        if (booking.getDateOfTravel() == null) return false;
+        if (booking.getDateOfTravel().isBefore(LocalDate.now())) return true;
+        if (booking.getDateOfTravel().isEqual(LocalDate.now())) {
+            if (booking.getDepartureTime() != null && !booking.getDepartureTime().isBlank()) {
+                try {
+                    String timeStr = booking.getDepartureTime().trim();
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+                    LocalTime depTime = LocalTime.parse(timeStr, formatter);
+                    return LocalTime.now().isAfter(depTime);
+                } catch (Exception e) {
+                    // Fallback comparison
+                }
+            }
+        }
+        return false;
+    }
+
     @Transactional
     public Booking bookFlight(BookingRequestDTO request) {
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + request.getUserId()));
 
         Flight flight = flightRepository.findById(request.getFlightId())
-                .orElseThrow(() -> new RuntimeException("Flight not found with ID: " + request.getFlightId()));
+                .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + request.getFlightId()));
 
         Carrier carrier = carrierRepository.findById(flight.getCarrierId())
-                .orElseThrow(() -> new RuntimeException("Carrier not found with ID: " + flight.getCarrierId()));
+                .orElseThrow(() -> new IllegalArgumentException("Carrier not found with ID: " + flight.getCarrierId()));
+
+        if (flight.getOrigin() != null && flight.getOrigin().equalsIgnoreCase(flight.getDestination())) {
+            throw new IllegalArgumentException("Origin and Destination cities must be different.");
+        }
 
         int requestedSeats = request.getNoOfSeats();
         String seatCategory = request.getSeatCategory().toUpperCase();
@@ -42,28 +79,28 @@ public class BookingService {
         if ("ECONOMY".equals(seatCategory)) {
             int available = flight.getSeatCapacityEconomyClass() - flight.getBookedSeatsEconomyClass();
             if (requestedSeats > available) {
-                throw new RuntimeException("Only " + available + " Economy seats remaining for Flight #" + flight.getFlightId());
+                throw new IllegalArgumentException("Only " + available + " Economy seats remaining for Flight #" + flight.getFlightId());
             }
             flight.setBookedSeatsEconomyClass(flight.getBookedSeatsEconomyClass() + requestedSeats);
         } else if ("BUSINESS".equals(seatCategory)) {
             int available = flight.getSeatCapacityBusinessClass() - flight.getBookedSeatsBusinessClass();
             if (requestedSeats > available) {
-                throw new RuntimeException("Only " + available + " Business seats remaining for Flight #" + flight.getFlightId());
+                throw new IllegalArgumentException("Only " + available + " Business seats remaining for Flight #" + flight.getFlightId());
             }
             flight.setBookedSeatsBusinessClass(flight.getBookedSeatsBusinessClass() + requestedSeats);
         } else if ("EXECUTIVE".equals(seatCategory)) {
             int available = flight.getSeatCapacityExecutiveClass() - flight.getBookedSeatsExecutiveClass();
             if (requestedSeats > available) {
-                throw new RuntimeException("Only " + available + " Executive seats remaining for Flight #" + flight.getFlightId());
+                throw new IllegalArgumentException("Only " + available + " Executive seats remaining for Flight #" + flight.getFlightId());
             }
             flight.setBookedSeatsExecutiveClass(flight.getBookedSeatsExecutiveClass() + requestedSeats);
         } else {
-            throw new RuntimeException("Invalid seat category: " + seatCategory);
+            throw new IllegalArgumentException("Invalid seat category: " + seatCategory);
         }
 
         flightRepository.save(flight);
 
-        // 2. Select base fare per seat based on selected seat class
+        // 2. Select base fare per seat based on selected seat class (Tamper-proof calculation on server)
         double baseFarePerSeat = flight.getEconomyClassFare() != null ? flight.getEconomyClassFare() : flight.getAirFare();
         if ("BUSINESS".equals(seatCategory)) {
             baseFarePerSeat = flight.getBusinessClassFare() != null ? flight.getBusinessClassFare() : (flight.getAirFare() * 1.8);
@@ -97,15 +134,17 @@ public class BookingService {
         double bulkDiscountAmount = (grossAmount * bulkDiscountPct) / 100.0;
 
         double totalDiscount = advanceDiscountAmount + tierDiscountAmount + bulkDiscountAmount;
-        double netPayableAmount = Math.max(0, grossAmount - totalDiscount);
+        double netPayableAmount = Math.max(1.0, grossAmount - totalDiscount);
 
         String txnId = "TXN-AMS-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String pnrCode = generateUniquePNR();
 
         String depTime = flight.getDepartureTime() != null ? flight.getDepartureTime() : "10:30 AM";
         String arrTime = flight.getArrivalTime() != null ? flight.getArrivalTime() : "01:45 PM";
 
         // 4. Construct Booking entity
         Booking booking = Booking.builder()
+                .pnr(pnrCode)
                 .userId(user.getUserId())
                 .userName(user.getUserName())
                 .flightId(flight.getFlightId())
@@ -161,6 +200,10 @@ public class BookingService {
     }
 
     private Booking populateFlightDetails(Booking b) {
+        if (b.getPnr() == null || b.getPnr().isBlank()) {
+            b.setPnr("PNR-" + String.format("%06d", b.getBookingId()));
+        }
+
         if (b.getDepartureTime() == null || b.getDepartureTime().isBlank() || b.getArrivalTime() == null || b.getArrivalTime().isBlank()) {
             Flight f = flightRepository.findById(b.getFlightId()).orElse(null);
             if (f != null) {
@@ -196,7 +239,7 @@ public class BookingService {
 
     public Booking getBookingById(Long bookingId) {
         Booking b = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + bookingId));
         return populateFlightDetails(b);
     }
 
@@ -207,17 +250,24 @@ public class BookingService {
     }
 
     @Transactional
-    public Booking cancelPartialOrFull(Long bookingId, PartialCancelRequestDTO request) {
+    public Booking cancelPartialOrFull(Long bookingId, PartialCancelRequestDTO request, String requestingRole) {
+        if ("ADMIN".equalsIgnoreCase(requestingRole)) {
+            throw new IllegalArgumentException("Administrators are not permitted to cancel customer flight bookings.");
+        }
         return cancelPartialBooking(bookingId, request.getPassengerIds());
     }
 
     @Transactional
     public Booking cancelPartialBooking(Long bookingId, List<Long> passengerIdsToCancel) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + bookingId));
 
         if ("CANCELLED".equals(booking.getBookingStatus())) {
-            throw new RuntimeException("Booking is already fully cancelled.");
+            throw new IllegalArgumentException("Booking is already fully cancelled.");
+        }
+
+        if (isPastFlight(booking)) {
+            throw new IllegalArgumentException("Cannot cancel booking for a flight journey that has already passed/departed.");
         }
 
         Flight flight = flightRepository.findById(booking.getFlightId()).orElse(null);
@@ -232,7 +282,7 @@ public class BookingService {
         }
 
         if (cancelledCount == 0) {
-            throw new RuntimeException("No valid active passengers selected for cancellation.");
+            throw new IllegalArgumentException("No valid active passengers selected for cancellation.");
         }
 
         // Restore seat capacity to Flight schedule
@@ -267,8 +317,10 @@ public class BookingService {
         long activeCount = booking.getPassengers().stream().filter(p -> !"CANCELLED".equals(p.getStatus())).count();
         if (activeCount == 0) {
             booking.setBookingStatus("CANCELLED");
+            booking.setCancellationDate(LocalDate.now());
         } else {
             booking.setBookingStatus("PARTIALLY_CANCELLED");
+            booking.setCancellationDate(LocalDate.now());
         }
 
         Booking saved = bookingRepository.save(booking);
