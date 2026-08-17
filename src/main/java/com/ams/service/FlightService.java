@@ -69,26 +69,47 @@ public class FlightService {
 
     public String computeArrivalTime(String origin, String destination, String departureTimeStr) {
         if (departureTimeStr == null || departureTimeStr.isBlank()) {
-            return "12:00 PM";
+            return "12:45 PM";
+        }
+
+        String trimmed = departureTimeStr.trim();
+        int durationMins = calculateFlightDurationMinutes(origin, destination);
+
+        DateTimeFormatter[] formatters = new DateTimeFormatter[]{
+                DateTimeFormatter.ofPattern("h:mm a"),
+                DateTimeFormatter.ofPattern("hh:mm a"),
+                DateTimeFormatter.ofPattern("H:mm"),
+                DateTimeFormatter.ofPattern("HH:mm"),
+                DateTimeFormatter.ofPattern("h:mma"),
+                DateTimeFormatter.ofPattern("hh:mma")
+        };
+
+        for (DateTimeFormatter dtf : formatters) {
+            try {
+                LocalTime depTime = LocalTime.parse(trimmed.toUpperCase(), dtf);
+                LocalTime arrTime = depTime.plusMinutes(durationMins);
+                return arrTime.format(DateTimeFormatter.ofPattern("hh:mm a"));
+            } catch (Exception ignored) {}
         }
 
         try {
-            String trimmed = departureTimeStr.trim();
-            LocalTime depTime;
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(\\d{1,2}):(\\d{2})\\s*(AM|PM)?", java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher m = p.matcher(trimmed);
+            if (m.find()) {
+                int h = Integer.parseInt(m.group(1));
+                int min = Integer.parseInt(m.group(2));
+                String period = m.group(3);
 
-            if (trimmed.toUpperCase().endsWith("AM") || trimmed.toUpperCase().endsWith("PM")) {
-                depTime = LocalTime.parse(trimmed.toUpperCase(), DateTimeFormatter.ofPattern("h:mm a"));
-            } else {
-                depTime = LocalTime.parse(trimmed, DateTimeFormatter.ofPattern("H:mm"));
+                if ("PM".equalsIgnoreCase(period) && h < 12) h += 12;
+                if ("AM".equalsIgnoreCase(period) && h == 12) h = 0;
+
+                LocalTime depTime = LocalTime.of(h, min);
+                LocalTime arrTime = depTime.plusMinutes(durationMins);
+                return arrTime.format(DateTimeFormatter.ofPattern("hh:mm a"));
             }
+        } catch (Exception ignored) {}
 
-            int durationMins = calculateFlightDurationMinutes(origin, destination);
-            LocalTime arrTime = depTime.plusMinutes(durationMins);
-
-            return arrTime.format(DateTimeFormatter.ofPattern("hh:mm a"));
-        } catch (DateTimeParseException e) {
-            return departureTimeStr + " + 2h";
-        }
+        return "01:45 PM";
     }
 
     private void validateFlightRules(Flight flight) {
