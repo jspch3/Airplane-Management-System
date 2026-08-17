@@ -7,6 +7,7 @@ import com.ams.repository.CarrierRepository;
 import com.ams.repository.FlightRepository;
 import com.ams.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -17,17 +18,40 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final CarrierRepository carrierRepository;
     private final FlightRepository flightRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public DataInitializer(UserRepository userRepository,
                            CarrierRepository carrierRepository,
-                           FlightRepository flightRepository) {
+                           FlightRepository flightRepository,
+                           JdbcTemplate jdbcTemplate) {
         this.userRepository = userRepository;
         this.carrierRepository = carrierRepository;
         this.flightRepository = flightRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     public void run(String... args) throws Exception {
+        // 0. Auto Schema Migration for existing databases (adds schedule_date, user_email, user_phone if missing)
+        try {
+            jdbcTemplate.execute("ALTER TABLE flights ADD COLUMN schedule_date DATE");
+            System.out.println("✅ Added missing schedule_date column to flights table.");
+        } catch (Exception ignored) {
+            // Column already exists or table dynamically created by DDL auto
+        }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE bookings ADD COLUMN user_email VARCHAR(100)");
+        } catch (Exception ignored) {}
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE bookings ADD COLUMN user_phone VARCHAR(20)");
+        } catch (Exception ignored) {}
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE bookings ADD COLUMN customer_category VARCHAR(20)");
+        } catch (Exception ignored) {}
+
         // 1. Seed System Admin User if no Admin exists
         if (userRepository.findByUserName("admin").isEmpty()) {
             User admin = User.builder()
