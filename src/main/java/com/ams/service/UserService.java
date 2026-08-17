@@ -35,6 +35,9 @@ public class UserService {
         if (userRepository.existsByEmailId(user.getEmailId())) {
             throw new IllegalArgumentException("Email ID '" + user.getEmailId() + "' is already registered");
         }
+        if (userRepository.existsByPhone(user.getPhone())) {
+            throw new IllegalArgumentException("Mobile number '" + user.getPhone() + "' is already registered");
+        }
 
         validateAge(user.getDob());
 
@@ -53,6 +56,12 @@ public class UserService {
         user.setCustomerCategory("REGULAR");
         if (userRepository.existsByUserName(user.getUserName())) {
             throw new IllegalArgumentException("Admin username '" + user.getUserName() + "' is already taken");
+        }
+        if (userRepository.existsByEmailId(user.getEmailId())) {
+            throw new IllegalArgumentException("Email ID '" + user.getEmailId() + "' is already registered");
+        }
+        if (userRepository.existsByPhone(user.getPhone())) {
+            throw new IllegalArgumentException("Mobile number '" + user.getPhone() + "' is already registered");
         }
         validateAge(user.getDob());
         return userRepository.save(user);

@@ -41,12 +41,12 @@ public class User {
 
     @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^[6-9][0-9]{9}$", message = "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9")
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, unique = true, length = 10)
     private String phone;
 
     @NotBlank(message = "Email ID is required")
     @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "Email ID must start with an alphabetic character and be a valid RFC-compliant email address")
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private String emailId;
 
     @NotBlank(message = "Address 1 is required")
