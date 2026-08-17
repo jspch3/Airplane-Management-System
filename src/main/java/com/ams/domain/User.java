@@ -45,7 +45,7 @@ public class User {
     private String phone;
 
     @NotBlank(message = "Email ID is required")
-    @Pattern(regexp = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "Email ID must be a valid RFC-compliant email address")
+    @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "Email ID must start with an alphabetic character and be a valid RFC-compliant email address")
     @Column(nullable = false, length = 100)
     private String emailId;
 

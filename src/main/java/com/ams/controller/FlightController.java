@@ -4,10 +4,12 @@ import com.ams.domain.Flight;
 import com.ams.service.FlightService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,9 +26,14 @@ public class FlightController {
         return new ResponseEntity<>(savedFlight, HttpStatus.CREATED);
     }
 
-    // US006: View Flight Details / Search by Carrier
+    // US006: View Flight Details / Search by Carrier or Date
     @GetMapping
-    public ResponseEntity<List<Flight>> viewFlights(@RequestParam(required = false) String carrierName) {
+    public ResponseEntity<List<Flight>> viewFlights(
+            @RequestParam(required = false) String carrierName,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        if (date != null) {
+            return ResponseEntity.ok(flightService.getFlightsByScheduleDate(date));
+        }
         if (carrierName != null && !carrierName.trim().isEmpty()) {
             return ResponseEntity.ok(flightService.getFlightsByCarrierName(carrierName));
         }

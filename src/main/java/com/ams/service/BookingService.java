@@ -147,6 +147,9 @@ public class BookingService {
                 .pnr(pnrCode)
                 .userId(user.getUserId())
                 .userName(user.getUserName())
+                .userEmail(user.getEmailId())
+                .userPhone(user.getPhone())
+                .customerCategory(user.getCustomerCategory() != null ? user.getCustomerCategory() : "REGULAR")
                 .flightId(flight.getFlightId())
                 .flightName(flight.getCarrierName() + " (" + flight.getOrigin() + " to " + flight.getDestination() + ")")
                 .origin(flight.getOrigin())
@@ -202,6 +205,14 @@ public class BookingService {
     private Booking populateFlightDetails(Booking b) {
         if (b.getPnr() == null || b.getPnr().isBlank()) {
             b.setPnr("PNR-" + String.format("%06d", b.getBookingId()));
+        }
+
+        if (b.getUserEmail() == null || b.getUserPhone() == null) {
+            userRepository.findById(b.getUserId()).ifPresent(u -> {
+                if (b.getUserEmail() == null) b.setUserEmail(u.getEmailId());
+                if (b.getUserPhone() == null) b.setUserPhone(u.getPhone());
+                if (b.getCustomerCategory() == null) b.setCustomerCategory(u.getCustomerCategory());
+            });
         }
 
         if (b.getDepartureTime() == null || b.getDepartureTime().isBlank() || b.getArrivalTime() == null || b.getArrivalTime().isBlank()) {

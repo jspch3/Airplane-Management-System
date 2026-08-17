@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "flights")
 @Getter
@@ -17,9 +19,6 @@ public class Flight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long flightId;
 
-    @Version
-    private Long version;
-
     @NotNull(message = "Carrier ID is required")
     private Long carrierId;
 
@@ -31,6 +30,9 @@ public class Flight {
 
     @NotBlank(message = "Destination is required")
     private String destination;
+
+    @NotNull(message = "Schedule Date is required")
+    private LocalDate scheduleDate;
 
     @NotBlank(message = "Departure time is required")
     private String departureTime;

@@ -32,6 +32,12 @@ public class Booking {
     @Column(nullable = false, length = 50)
     private String userName;
 
+    private String userEmail;
+
+    private String userPhone;
+
+    private String customerCategory;
+
     @NotNull(message = "Flight ID is required")
     @Column(nullable = false)
     private Long flightId;
