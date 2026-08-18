@@ -262,8 +262,44 @@ public class FlightService {
         return list;
     }
 
+    public boolean isFlightOperatingOnDate(Flight flight, LocalDate targetDate) {
+        if (flight == null || targetDate == null || flight.getScheduleDate() == null) {
+            return false;
+        }
+
+        LocalDate start = flight.getScheduleDate();
+        String freq = flight.getFlightFrequency() != null ? flight.getFlightFrequency() : "SINGLE_DATE";
+
+        if (freq.equals("SINGLE_DATE")) {
+            return start.isEqual(targetDate);
+        }
+
+        if (targetDate.isBefore(start)) {
+            return false;
+        }
+
+        long diffDays = java.time.temporal.ChronoUnit.DAYS.between(start, targetDate);
+
+        switch (freq) {
+            case "DAILY":
+                return diffDays >= 0;
+            case "EVERY_3_DAYS":
+                return diffDays >= 0 && diffDays % 3 == 0;
+            case "WEEKLY":
+                return diffDays >= 0 && diffDays % 7 == 0;
+            case "MONTHLY":
+                return diffDays >= 0 && start.getDayOfMonth() == targetDate.getDayOfMonth();
+            default:
+                return start.isEqual(targetDate);
+        }
+    }
+
     public List<Flight> getFlightsByScheduleDate(LocalDate scheduleDate) {
-        return flightRepository.findByScheduleDate(scheduleDate);
+        List<Flight> all = getAllFlights();
+        return all.stream()
+                .filter(f -> isFlightOperatingOnDate(f, scheduleDate))
+                .peek(f -> f.setScheduleDate(scheduleDate))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public Optional<Flight> getFlightById(Long id) {
