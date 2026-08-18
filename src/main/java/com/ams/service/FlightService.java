@@ -250,7 +250,13 @@ public class FlightService {
     }
 
     public List<Flight> getAllFlights() {
-        return flightRepository.findAll();
+        List<Flight> list = flightRepository.findAll();
+        for (Flight f : list) {
+            if (f.getArrivalTime() == null || f.getArrivalTime().contains("+") || f.getArrivalTime().toLowerCase().contains("2h")) {
+                f.setArrivalTime(computeArrivalTime(f.getOrigin(), f.getDestination(), f.getDepartureTime()));
+            }
+        }
+        return list;
     }
 
     public List<Flight> getFlightsByScheduleDate(LocalDate scheduleDate) {
