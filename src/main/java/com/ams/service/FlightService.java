@@ -143,6 +143,15 @@ public class FlightService {
             }
         }
 
+        // 3-Month Window Schedule Date Validation for Flight Registration/Updates
+        if (flight.getScheduleDate() != null) {
+            LocalDate today = LocalDate.now();
+            LocalDate maxAllowedDate = today.plusMonths(3);
+            if (flight.getScheduleDate().isBefore(today) || flight.getScheduleDate().isAfter(maxAllowedDate)) {
+                throw new IllegalArgumentException("Flight schedule date must be within the 3-month window from today (" + today + " to " + maxAllowedDate + ").");
+            }
+        }
+
         // Fares Hierarchy Validation
         if (flight.getBusinessClassFare() != null && flight.getEconomyClassFare() != null) {
             if (flight.getBusinessClassFare() <= flight.getEconomyClassFare()) {
