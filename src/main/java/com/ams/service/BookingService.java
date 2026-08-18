@@ -73,6 +73,10 @@ public class BookingService {
         }
 
         int requestedSeats = request.getNoOfSeats();
+        if (requestedSeats < 1 || requestedSeats > 6) {
+            throw new IllegalArgumentException("A customer can book a maximum of 6 tickets only per booking transaction.");
+        }
+
         String seatCategory = request.getSeatCategory().toUpperCase();
 
         // 1. Verify seat availability per category
@@ -128,9 +132,9 @@ public class BookingService {
 
         double tierDiscountAmount = (grossAmount * tierDiscountPct) / 100.0;
 
-        // Bulk discount
+        // Bulk discount (Applicable for more than 4 seats, i.e. 5 or 6 seats)
         double bulkDiscountPct = 0.0;
-        if (requestedSeats >= 10) bulkDiscountPct = carrier.getBulkBookingDiscount();
+        if (requestedSeats > 4) bulkDiscountPct = carrier.getBulkBookingDiscount();
         double bulkDiscountAmount = (grossAmount * bulkDiscountPct) / 100.0;
 
         double totalDiscount = advanceDiscountAmount + tierDiscountAmount + bulkDiscountAmount;
@@ -309,15 +313,21 @@ public class BookingService {
             flightRepository.save(flight);
         }
 
-        // Calculate Proportional Refund based on days prior to travel
+        // Calculate Proportional Refund based on days prior to travel: <2 days (max 20%), 2-19 days (max 40%), >=20 days (max 75%)
         long daysPrior = ChronoUnit.DAYS.between(LocalDate.now(), booking.getDateOfTravel());
-        double refundPct = 0.0;
+        double refundPct = 20.0;
         if (carrier != null) {
-            if (daysPrior >= 20) refundPct = carrier.getRefund20DaysOrMoreBeforeTravelDate();
-            else if (daysPrior >= 10) refundPct = carrier.getRefund10DaysBeforeTravelDate();
-            else refundPct = carrier.getRefund2DaysBeforeTravelDate();
+            if (daysPrior >= 20) {
+                refundPct = Math.min(75.0, carrier.getRefund20DaysOrMoreBeforeTravelDate() != null ? carrier.getRefund20DaysOrMoreBeforeTravelDate() : 75.0);
+            } else if (daysPrior >= 2) {
+                refundPct = Math.min(40.0, carrier.getRefund10DaysBeforeTravelDate() != null ? carrier.getRefund10DaysBeforeTravelDate() : 40.0);
+            } else {
+                refundPct = Math.min(20.0, carrier.getRefund2DaysBeforeTravelDate() != null ? carrier.getRefund2DaysBeforeTravelDate() : 20.0);
+            }
         } else {
-            refundPct = 50.0;
+            if (daysPrior >= 20) refundPct = 75.0;
+            else if (daysPrior >= 2) refundPct = 40.0;
+            else refundPct = 20.0;
         }
 
         double singleSeatNetFare = booking.getNetPayableAmount() / booking.getNoOfSeats();

@@ -88,9 +88,9 @@ public class DataInitializer implements CommandLineRunner {
                     .silverUserDiscount(5.0)
                     .goldUserDiscount(10.0)
                     .platinumUserDiscount(15.0)
-                    .refund2DaysBeforeTravelDate(0.0)
-                    .refund10DaysBeforeTravelDate(50.0)
-                    .refund20DaysOrMoreBeforeTravelDate(80.0)
+                    .refund2DaysBeforeTravelDate(20.0)
+                    .refund10DaysBeforeTravelDate(40.0)
+                    .refund20DaysOrMoreBeforeTravelDate(75.0)
                     .build();
 
             Carrier airIndia = Carrier.builder()
@@ -102,8 +102,8 @@ public class DataInitializer implements CommandLineRunner {
                     .silverUserDiscount(5.0)
                     .goldUserDiscount(10.0)
                     .platinumUserDiscount(15.0)
-                    .refund2DaysBeforeTravelDate(0.0)
-                    .refund10DaysBeforeTravelDate(45.0)
+                    .refund2DaysBeforeTravelDate(20.0)
+                    .refund10DaysBeforeTravelDate(40.0)
                     .refund20DaysOrMoreBeforeTravelDate(75.0)
                     .build();
 

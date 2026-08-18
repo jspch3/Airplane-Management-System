@@ -65,22 +65,22 @@ public class Carrier {
     @Column(nullable = false)
     private Double platinumUserDiscount;
 
-    // Refund Percentages (max 40%)
+    // Refund Percentages: <2 days prior (max 20%), 2-19 days prior (max 40%), >=20 days prior (max 75%)
     @NotNull(message = "2 Days Before Refund Percentage is required")
     @Min(value = 0, message = "Refund cannot be negative")
-    @Max(value = 40, message = "Refund percentage cannot exceed 40%")
+    @Max(value = 20, message = "Refund percentage cannot exceed 20% for <2 days prior")
     @Column(nullable = false)
     private Double refund2DaysBeforeTravelDate;
 
     @NotNull(message = "10 Days Before Refund Percentage is required")
     @Min(value = 0, message = "Refund cannot be negative")
-    @Max(value = 40, message = "Refund percentage cannot exceed 40%")
+    @Max(value = 40, message = "Refund percentage cannot exceed 40% for 2-10 days prior")
     @Column(nullable = false)
     private Double refund10DaysBeforeTravelDate;
 
     @NotNull(message = "20 Days or More Refund Percentage is required")
     @Min(value = 0, message = "Refund cannot be negative")
-    @Max(value = 40, message = "Refund percentage cannot exceed 40%")
+    @Max(value = 75, message = "Refund percentage cannot exceed 75% for >=20 days prior")
     @Column(nullable = false)
     private Double refund20DaysOrMoreBeforeTravelDate;
 }
