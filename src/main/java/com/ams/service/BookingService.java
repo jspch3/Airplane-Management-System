@@ -116,12 +116,6 @@ public class BookingService {
 
         // 3. Discount Engine Calculation (Rupees ₹)
         long daysAhead = ChronoUnit.DAYS.between(LocalDate.now(), request.getDateOfTravel());
-        double advanceDiscountPct = 0.0;
-        if (daysAhead >= 90) advanceDiscountPct = carrier.getDiscount90DaysAdvanceBooking();
-        else if (daysAhead >= 60) advanceDiscountPct = carrier.getDiscount60DaysAdvanceBooking();
-        else if (daysAhead >= 30) advanceDiscountPct = carrier.getDiscount30DaysAdvanceBooking();
-
-        double advanceDiscountAmount = (grossAmount * advanceDiscountPct) / 100.0;
 
         // Tier discount
         double tierDiscountPct = 0.0;
@@ -131,14 +125,28 @@ public class BookingService {
         else if ("PLATINUM".equals(userCategory)) tierDiscountPct = carrier.getPlatinumUserDiscount();
 
         double tierDiscountAmount = (grossAmount * tierDiscountPct) / 100.0;
+        double priceAfterTier = Math.max(0.0, grossAmount - tierDiscountAmount);
 
         // Bulk discount (Applicable for more than 4 seats, i.e. 5 or 6 seats)
         double bulkDiscountPct = 0.0;
         if (requestedSeats > 4) bulkDiscountPct = carrier.getBulkBookingDiscount();
-        double bulkDiscountAmount = (grossAmount * bulkDiscountPct) / 100.0;
+        double bulkDiscountAmount = (priceAfterTier * bulkDiscountPct) / 100.0;
+        double priceAfterBulk = Math.max(0.0, priceAfterTier - bulkDiscountAmount);
 
-        double totalDiscount = advanceDiscountAmount + tierDiscountAmount + bulkDiscountAmount;
-        double netPayableAmount = Math.max(1.0, grossAmount - totalDiscount);
+        // Advance discount
+        double advanceDiscountPct = 0.0;
+        if (daysAhead >= 90) advanceDiscountPct = carrier.getDiscount90DaysAdvanceBooking();
+        else if (daysAhead >= 60) advanceDiscountPct = carrier.getDiscount60DaysAdvanceBooking();
+        else if (daysAhead >= 30) advanceDiscountPct = carrier.getDiscount30DaysAdvanceBooking();
+
+        double advanceDiscountAmount = (priceAfterBulk * advanceDiscountPct) / 100.0;
+
+        double totalDiscount = tierDiscountAmount + bulkDiscountAmount + advanceDiscountAmount;
+        double subtotal = Math.max(0.0, grossAmount - totalDiscount);
+
+        // 18% Aviation GST Tax
+        double gstAmount = subtotal * 0.18;
+        double netPayableAmount = subtotal + gstAmount;
 
         String txnId = "TXN-AMS-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         String pnrCode = generateUniquePNR();
@@ -169,6 +177,7 @@ public class BookingService {
                 .tierDiscountAmount(tierDiscountAmount)
                 .bulkDiscountAmount(bulkDiscountAmount)
                 .totalDiscountAmount(totalDiscount)
+                .gstAmount(gstAmount)
                 .bookingAmount(netPayableAmount)
                 .bookingStatus("BOOKED")
                 .paymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CARD")

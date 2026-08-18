@@ -91,6 +91,9 @@ public class Booking {
     @Builder.Default
     private Double totalDiscountAmount = 0.0;
 
+    @Builder.Default
+    private Double gstAmount = 0.0;
+
     @Column(nullable = false)
     private Double bookingAmount; // Net payable booking amount
 
