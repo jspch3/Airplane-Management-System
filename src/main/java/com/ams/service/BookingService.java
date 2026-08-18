@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,31 @@ public class BookingService {
 
         if (flight.getOrigin() != null && flight.getOrigin().equalsIgnoreCase(flight.getDestination())) {
             throw new IllegalArgumentException("Origin and Destination cities must be different.");
+        }
+
+        // Validate travel date & departure time
+        if (request.getDateOfTravel() == null) {
+            throw new IllegalArgumentException("Date of travel is required.");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (request.getDateOfTravel().isBefore(today)) {
+            throw new IllegalArgumentException("Date of travel cannot be in the past.");
+        }
+
+        if (request.getDateOfTravel().isEqual(today)) {
+            if (flight.getDepartureTime() != null && !flight.getDepartureTime().trim().isEmpty()) {
+                try {
+                    String timeStr = flight.getDepartureTime().trim();
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+                    LocalTime depTime = LocalTime.parse(timeStr, formatter);
+                    if (LocalTime.now().isAfter(depTime)) {
+                        throw new IllegalArgumentException("Departure time (" + flight.getDepartureTime() + ") for today's flight (" + today + ") has already passed. Please select tomorrow's date or an upcoming operating date.");
+                    }
+                } catch (DateTimeParseException e) {
+                    // Ignore parse errors if non-standard string
+                }
+            }
         }
 
         int requestedSeats = request.getNoOfSeats();
