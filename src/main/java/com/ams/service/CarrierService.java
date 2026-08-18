@@ -20,16 +20,26 @@ public class CarrierService {
             throw new IllegalArgumentException("Carrier name must be at least 2 characters long.");
         }
 
-        // Percentage boundaries check (<= 40%)
-        Double[] percentages = {
+        // Refund Percentages boundaries check: <2d (max 20%), 2-19d (max 40%), >=20d (max 75%)
+        if (c.getRefund2DaysBeforeTravelDate() != null && (c.getRefund2DaysBeforeTravelDate() < 0 || c.getRefund2DaysBeforeTravelDate() > 20.0)) {
+            throw new IllegalArgumentException("< 2 Days refund percentage cannot exceed 20%.");
+        }
+        if (c.getRefund10DaysBeforeTravelDate() != null && (c.getRefund10DaysBeforeTravelDate() < 0 || c.getRefund10DaysBeforeTravelDate() > 40.0)) {
+            throw new IllegalArgumentException("2 to 19 Days refund percentage cannot exceed 40%.");
+        }
+        if (c.getRefund20DaysOrMoreBeforeTravelDate() != null && (c.getRefund20DaysOrMoreBeforeTravelDate() < 0 || c.getRefund20DaysOrMoreBeforeTravelDate() > 75.0)) {
+            throw new IllegalArgumentException(">= 20 Days refund percentage cannot exceed 75%.");
+        }
+
+        // Discount Percentages boundaries check (<= 40%)
+        Double[] discountPcts = {
             c.getDiscount30DaysAdvanceBooking(), c.getDiscount60DaysAdvanceBooking(), c.getDiscount90DaysAdvanceBooking(),
-            c.getBulkBookingDiscount(), c.getSilverUserDiscount(), c.getGoldUserDiscount(), c.getPlatinumUserDiscount(),
-            c.getRefund2DaysBeforeTravelDate(), c.getRefund10DaysBeforeTravelDate(), c.getRefund20DaysOrMoreBeforeTravelDate()
+            c.getBulkBookingDiscount(), c.getSilverUserDiscount(), c.getGoldUserDiscount(), c.getPlatinumUserDiscount()
         };
 
-        for (Double pct : percentages) {
+        for (Double pct : discountPcts) {
             if (pct != null && (pct < 0 || pct > 40.0)) {
-                throw new IllegalArgumentException("Discount and refund percentages cannot exceed 40% (values > 40% are rejected).");
+                throw new IllegalArgumentException("Discount percentage cannot exceed 40%.");
             }
         }
 
