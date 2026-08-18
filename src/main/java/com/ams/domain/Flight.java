@@ -83,4 +83,7 @@ public class Flight {
 
     @Builder.Default
     private Integer bookedSeatsBusinessClass = 0;
+
+    @Builder.Default
+    private String flightFrequency = "DAILY";
 }

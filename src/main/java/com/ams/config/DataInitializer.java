@@ -36,9 +36,11 @@ public class DataInitializer implements CommandLineRunner {
         try {
             jdbcTemplate.execute("ALTER TABLE flights ADD COLUMN schedule_date DATE");
             System.out.println("✅ Added missing schedule_date column to flights table.");
-        } catch (Exception ignored) {
-            // Column already exists or table dynamically created by DDL auto
-        }
+        } catch (Exception ignored) {}
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE flights ADD COLUMN flight_frequency VARCHAR(50) DEFAULT 'DAILY'");
+        } catch (Exception ignored) {}
 
         try {
             jdbcTemplate.execute("ALTER TABLE bookings ADD COLUMN user_email VARCHAR(100)");
