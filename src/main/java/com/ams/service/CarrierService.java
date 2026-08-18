@@ -2,6 +2,7 @@ package com.ams.service;
 
 import com.ams.domain.Carrier;
 import com.ams.repository.CarrierRepository;
+import com.ams.repository.FlightRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,13 +13,14 @@ import java.util.List;
 public class CarrierService {
 
     private final CarrierRepository carrierRepository;
+    private final FlightRepository flightRepository;
 
     private void validateCarrierRules(Carrier c) {
         if (c.getCarrierName() == null || c.getCarrierName().trim().length() < 2) {
             throw new IllegalArgumentException("Carrier name must be at least 2 characters long.");
         }
 
-        // Percentage boundaries check (< 90%)
+        // Percentage boundaries check (<= 40%)
         Double[] percentages = {
             c.getDiscount30DaysAdvanceBooking(), c.getDiscount60DaysAdvanceBooking(), c.getDiscount90DaysAdvanceBooking(),
             c.getBulkBookingDiscount(), c.getSilverUserDiscount(), c.getGoldUserDiscount(), c.getPlatinumUserDiscount(),
@@ -26,8 +28,8 @@ public class CarrierService {
         };
 
         for (Double pct : percentages) {
-            if (pct != null && (pct < 0 || pct >= 90.0)) {
-                throw new IllegalArgumentException("Discount and refund percentages must be strictly less than 90% (values >= 90% are rejected).");
+            if (pct != null && (pct < 0 || pct > 40.0)) {
+                throw new IllegalArgumentException("Discount and refund percentages cannot exceed 40% (values > 40% are rejected).");
             }
         }
 
@@ -85,5 +87,13 @@ public class CarrierService {
     public Carrier getCarrierById(Long carrierId) {
         return carrierRepository.findById(carrierId)
                 .orElseThrow(() -> new IllegalArgumentException("Carrier not found with ID: " + carrierId));
+    }
+
+    public void deleteCarrier(Long carrierId) {
+        Carrier carrier = getCarrierById(carrierId);
+        if (flightRepository.existsByCarrierId(carrierId)) {
+            throw new IllegalArgumentException("We can't delete the carrier, it has active flights.");
+        }
+        carrierRepository.delete(carrier);
     }
 }

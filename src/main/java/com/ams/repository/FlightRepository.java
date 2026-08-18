@@ -13,4 +13,5 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
     List<Flight> findByOriginIgnoreCaseAndDestinationIgnoreCase(String origin, String destination);
     List<Flight> findByScheduleDate(LocalDate scheduleDate);
     List<Flight> findByCarrierNameContainingIgnoreCaseAndScheduleDate(String carrierName, LocalDate scheduleDate);
+    boolean existsByCarrierId(Long carrierId);
 }

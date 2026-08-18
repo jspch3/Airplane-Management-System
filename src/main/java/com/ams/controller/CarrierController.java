@@ -40,4 +40,10 @@ public class CarrierController {
     public ResponseEntity<Carrier> getCarrierById(@PathVariable Long carrierId) {
         return ResponseEntity.ok(carrierService.getCarrierById(carrierId));
     }
+
+    @DeleteMapping("/{carrierId}")
+    public ResponseEntity<Void> deleteCarrier(@PathVariable Long carrierId) {
+        carrierService.deleteCarrier(carrierId);
+        return ResponseEntity.noContent().build();
+    }
 }
