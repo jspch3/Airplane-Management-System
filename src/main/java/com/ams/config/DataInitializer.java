@@ -43,7 +43,7 @@ public class DataInitializer implements CommandLineRunner {
         } catch (Exception ignored) {}
 
         try {
-            jdbcTemplate.execute("UPDATE flights SET flight_frequency = 'SINGLE_DATE' WHERE flight_frequency IS NULL OR flight_frequency = 'DAILY'");
+            jdbcTemplate.execute("UPDATE flights SET flight_frequency = 'SINGLE_DATE' WHERE flight_frequency IS NULL");
         } catch (Exception ignored) {}
 
         try {

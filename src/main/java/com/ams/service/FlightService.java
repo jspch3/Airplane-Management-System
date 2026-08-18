@@ -245,6 +245,9 @@ public class FlightService {
         existing.setSeatCapacityEconomyClass(updatedFlight.getSeatCapacityEconomyClass());
         existing.setSeatCapacityBusinessClass(updatedFlight.getSeatCapacityBusinessClass());
         existing.setSeatCapacityExecutiveClass(updatedFlight.getSeatCapacityExecutiveClass());
+        if (updatedFlight.getFlightFrequency() != null && !updatedFlight.getFlightFrequency().trim().isEmpty()) {
+            existing.setFlightFrequency(updatedFlight.getFlightFrequency());
+        }
 
         return flightRepository.save(existing);
     }
