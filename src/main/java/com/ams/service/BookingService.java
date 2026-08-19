@@ -89,8 +89,8 @@ public class BookingService {
                     String timeStr = flight.getDepartureTime().trim();
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
                     LocalTime depTime = LocalTime.parse(timeStr, formatter);
-                    if (LocalTime.now().isAfter(depTime)) {
-                        throw new IllegalArgumentException("Departure time (" + flight.getDepartureTime() + ") for today's flight (" + today + ") has already passed. Please select tomorrow's date or an upcoming operating date.");
+                    if (LocalTime.now().plusMinutes(30).isAfter(depTime)) {
+                        throw new IllegalArgumentException("Flight departs within 30 minutes (or has already passed) for today (" + today + "). Minimum 30-minute booking buffer is required.");
                     }
                 } catch (DateTimeParseException e) {
                     // Ignore parse errors if non-standard string
@@ -105,30 +105,25 @@ public class BookingService {
 
         String seatCategory = request.getSeatCategory().toUpperCase();
 
-        // 1. Verify seat availability per category
-        if ("ECONOMY".equals(seatCategory)) {
-            int available = flight.getSeatCapacityEconomyClass() - flight.getBookedSeatsEconomyClass();
-            if (requestedSeats > available) {
-                throw new IllegalArgumentException("Only " + available + " Economy seats remaining for Flight #" + flight.getFlightId());
-            }
-            flight.setBookedSeatsEconomyClass(flight.getBookedSeatsEconomyClass() + requestedSeats);
-        } else if ("BUSINESS".equals(seatCategory)) {
-            int available = flight.getSeatCapacityBusinessClass() - flight.getBookedSeatsBusinessClass();
-            if (requestedSeats > available) {
-                throw new IllegalArgumentException("Only " + available + " Business seats remaining for Flight #" + flight.getFlightId());
-            }
-            flight.setBookedSeatsBusinessClass(flight.getBookedSeatsBusinessClass() + requestedSeats);
-        } else if ("EXECUTIVE".equals(seatCategory)) {
-            int available = flight.getSeatCapacityExecutiveClass() - flight.getBookedSeatsExecutiveClass();
-            if (requestedSeats > available) {
-                throw new IllegalArgumentException("Only " + available + " Executive seats remaining for Flight #" + flight.getFlightId());
-            }
-            flight.setBookedSeatsExecutiveClass(flight.getBookedSeatsExecutiveClass() + requestedSeats);
-        } else {
-            throw new IllegalArgumentException("Invalid seat category: " + seatCategory);
-        }
+        // 1. Verify seat availability PER SPECIFIC DATE OF TRAVEL
+        int maxCapacity = 0;
+        if ("ECONOMY".equals(seatCategory)) maxCapacity = flight.getSeatCapacityEconomyClass();
+        else if ("BUSINESS".equals(seatCategory)) maxCapacity = flight.getSeatCapacityBusinessClass();
+        else if ("EXECUTIVE".equals(seatCategory)) maxCapacity = flight.getSeatCapacityExecutiveClass();
+        else throw new IllegalArgumentException("Invalid seat category: " + seatCategory);
 
-        flightRepository.save(flight);
+        List<Booking> activeBookingsOnDate = bookingRepository.findByFlightIdAndDateOfTravelAndBookingStatusNot(
+                flight.getFlightId(), request.getDateOfTravel(), "CANCELLED"
+        );
+        int alreadyBookedOnDate = activeBookingsOnDate.stream()
+                .filter(b -> seatCategory.equalsIgnoreCase(b.getSeatCategory()))
+                .mapToInt(Booking::getNoOfSeats)
+                .sum();
+
+        int availableSeatsOnDate = maxCapacity - alreadyBookedOnDate;
+        if (requestedSeats > availableSeatsOnDate) {
+            throw new IllegalArgumentException("Only " + Math.max(0, availableSeatsOnDate) + " " + seatCategory + " seats remaining for Flight #" + flight.getFlightId() + " on " + request.getDateOfTravel());
+        }
 
         // 2. Select base fare per seat based on selected seat class (Tamper-proof calculation on server)
         double baseFarePerSeat = flight.getEconomyClassFare() != null ? flight.getEconomyClassFare() : flight.getAirFare();
@@ -381,5 +376,46 @@ public class BookingService {
 
         Booking saved = bookingRepository.save(booking);
         return populateFlightDetails(saved);
+    }
+
+    public int getAvailableSeats(Long flightId, LocalDate dateOfTravel, String seatCategory) {
+        Flight flight = flightRepository.findById(flightId).orElse(null);
+        if (flight == null) return 0;
+
+        String cat = seatCategory != null ? seatCategory.toUpperCase() : "ECONOMY";
+        int maxCapacity = 0;
+        if ("ECONOMY".equals(cat)) maxCapacity = flight.getSeatCapacityEconomyClass();
+        else if ("BUSINESS".equals(cat)) maxCapacity = flight.getSeatCapacityBusinessClass();
+        else if ("EXECUTIVE".equals(cat)) maxCapacity = flight.getSeatCapacityExecutiveClass();
+
+        List<Booking> activeBookingsOnDate = bookingRepository.findByFlightIdAndDateOfTravelAndBookingStatusNot(
+                flightId, dateOfTravel, "CANCELLED"
+        );
+        int alreadyBookedOnDate = activeBookingsOnDate.stream()
+                .filter(b -> cat.equalsIgnoreCase(b.getSeatCategory()))
+                .mapToInt(Booking::getNoOfSeats)
+                .sum();
+
+        return Math.max(0, maxCapacity - alreadyBookedOnDate);
+    }
+
+    public List<Booking> cancelFlightScheduleForDate(Long flightId, LocalDate dateOfTravel, String cancellationReason) {
+        List<Booking> activeBookings = bookingRepository.findByFlightIdAndDateOfTravelAndBookingStatusNot(
+                flightId, dateOfTravel, "CANCELLED"
+        );
+
+        for (Booking b : activeBookings) {
+            b.setBookingStatus("CANCELLED_BY_ADMIN");
+            b.setCancellationDate(LocalDate.now());
+            double fullPaid = b.getNetPayableAmount() != null ? b.getNetPayableAmount() : (b.getBookingAmount() != null ? b.getBookingAmount() : 0.0);
+            b.setRefundAmount(fullPaid);
+
+            if (b.getPassengers() != null) {
+                b.getPassengers().forEach(p -> p.setStatus("CANCELLED_BY_ADMIN"));
+            }
+            bookingRepository.save(b);
+        }
+
+        return activeBookings;
     }
 }

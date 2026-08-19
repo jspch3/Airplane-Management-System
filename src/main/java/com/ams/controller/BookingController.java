@@ -52,4 +52,24 @@ public class BookingController {
         Booking updatedBooking = bookingService.cancelPartialOrFull(bookingId, cancelRequest, role);
         return ResponseEntity.ok(updatedBooking);
     }
+
+    @GetMapping("/available-seats")
+    public ResponseEntity<Integer> getAvailableSeats(
+            @RequestParam Long flightId,
+            @RequestParam String date,
+            @RequestParam(defaultValue = "ECONOMY") String category) {
+        java.time.LocalDate travelDate = java.time.LocalDate.parse(date);
+        int available = bookingService.getAvailableSeats(flightId, travelDate, category);
+        return ResponseEntity.ok(available);
+    }
+
+    @PostMapping("/admin/cancel-flight-date")
+    public ResponseEntity<List<Booking>> cancelFlightDate(
+            @RequestParam Long flightId,
+            @RequestParam String date,
+            @RequestParam(required = false, defaultValue = "Cancelled by Admin") String reason) {
+        java.time.LocalDate travelDate = java.time.LocalDate.parse(date);
+        List<Booking> cancelledBookings = bookingService.cancelFlightScheduleForDate(flightId, travelDate, reason);
+        return ResponseEntity.ok(cancelledBookings);
+    }
 }
