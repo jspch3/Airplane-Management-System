@@ -296,22 +296,24 @@ public class BookingService {
 
     @Transactional
     public Booking cancelPartialOrFull(Long bookingId, PartialCancelRequestDTO request, String requestingRole) {
-        if ("ADMIN".equalsIgnoreCase(requestingRole)) {
-            throw new IllegalArgumentException("Administrators are not permitted to cancel customer flight bookings.");
-        }
-        return cancelPartialBooking(bookingId, request.getPassengerIds());
+        return cancelPartialBooking(bookingId, request.getPassengerIds(), requestingRole);
     }
 
     @Transactional
     public Booking cancelPartialBooking(Long bookingId, List<Long> passengerIdsToCancel) {
+        return cancelPartialBooking(bookingId, passengerIdsToCancel, "CUSTOMER");
+    }
+
+    @Transactional
+    public Booking cancelPartialBooking(Long bookingId, List<Long> passengerIdsToCancel, String requestingRole) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + bookingId));
 
-        if ("CANCELLED".equals(booking.getBookingStatus())) {
+        if ("CANCELLED".equals(booking.getBookingStatus()) || "CANCELLED_BY_ADMIN".equals(booking.getBookingStatus())) {
             throw new IllegalArgumentException("Booking is already fully cancelled.");
         }
 
-        if (isPastFlight(booking)) {
+        if (!"ADMIN".equalsIgnoreCase(requestingRole) && !"ROLE_ADMIN".equalsIgnoreCase(requestingRole) && isPastFlight(booking)) {
             throw new IllegalArgumentException("Cannot cancel booking for a flight journey that has already passed/departed.");
         }
 
@@ -330,10 +332,12 @@ public class BookingService {
             throw new IllegalArgumentException("No valid active passengers selected for cancellation.");
         }
 
-        // Calculate Proportional Refund based on days prior to travel: <2 days (max 20%), 2-19 days (max 40%), >=20 days (max 75%)
+        // Calculate Proportional Refund based on role / days prior to travel: Admin gets 100% refund
         long daysPrior = ChronoUnit.DAYS.between(LocalDate.now(), booking.getDateOfTravel());
         double refundPct = 20.0;
-        if (carrier != null) {
+        if ("ADMIN".equalsIgnoreCase(requestingRole) || "ROLE_ADMIN".equalsIgnoreCase(requestingRole)) {
+            refundPct = 100.0;
+        } else if (carrier != null) {
             if (daysPrior >= 20) {
                 refundPct = Math.min(75.0, carrier.getRefund20DaysOrMoreBeforeTravelDate() != null ? carrier.getRefund20DaysOrMoreBeforeTravelDate() : 75.0);
             } else if (daysPrior >= 2) {
@@ -352,9 +356,13 @@ public class BookingService {
 
         booking.setRefundAmount(booking.getRefundAmount() + additionalRefund);
 
-        long activeCount = booking.getPassengers().stream().filter(p -> !"CANCELLED".equals(p.getStatus())).count();
+        long activeCount = booking.getPassengers().stream().filter(p -> !"CANCELLED".equals(p.getStatus()) && !"CANCELLED_BY_ADMIN".equals(p.getStatus())).count();
         if (activeCount == 0) {
-            booking.setBookingStatus("CANCELLED");
+            if ("ADMIN".equalsIgnoreCase(requestingRole) || "ROLE_ADMIN".equalsIgnoreCase(requestingRole)) {
+                booking.setBookingStatus("CANCELLED_BY_ADMIN");
+            } else {
+                booking.setBookingStatus("CANCELLED");
+            }
             booking.setCancellationDate(LocalDate.now());
         } else {
             booking.setBookingStatus("PARTIALLY_CANCELLED");
