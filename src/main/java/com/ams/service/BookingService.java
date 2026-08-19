@@ -125,16 +125,6 @@ public class BookingService {
             throw new IllegalArgumentException("Only " + Math.max(0, availableSeatsOnDate) + " " + seatCategory + " seats remaining for Flight #" + flight.getFlightId() + " on " + request.getDateOfTravel());
         }
 
-        // Increment flight booked seats on Flight inventory record
-        if ("ECONOMY".equals(seatCategory)) {
-            flight.setBookedSeatsEconomyClass((flight.getBookedSeatsEconomyClass() != null ? flight.getBookedSeatsEconomyClass() : 0) + requestedSeats);
-        } else if ("BUSINESS".equals(seatCategory)) {
-            flight.setBookedSeatsBusinessClass((flight.getBookedSeatsBusinessClass() != null ? flight.getBookedSeatsBusinessClass() : 0) + requestedSeats);
-        } else if ("EXECUTIVE".equals(seatCategory)) {
-            flight.setBookedSeatsExecutiveClass((flight.getBookedSeatsExecutiveClass() != null ? flight.getBookedSeatsExecutiveClass() : 0) + requestedSeats);
-        }
-        flightRepository.save(flight);
-
         // 2. Select base fare per seat based on selected seat class (Tamper-proof calculation on server)
         double baseFarePerSeat = flight.getEconomyClassFare() != null ? flight.getEconomyClassFare() : flight.getAirFare();
         if ("BUSINESS".equals(seatCategory)) {
@@ -340,19 +330,6 @@ public class BookingService {
             throw new IllegalArgumentException("No valid active passengers selected for cancellation.");
         }
 
-        // Restore seat capacity to Flight schedule
-        if (flight != null) {
-            String category = booking.getSeatCategory().toUpperCase();
-            if ("ECONOMY".equals(category)) {
-                flight.setBookedSeatsEconomyClass(Math.max(0, flight.getBookedSeatsEconomyClass() - cancelledCount));
-            } else if ("BUSINESS".equals(category)) {
-                flight.setBookedSeatsBusinessClass(Math.max(0, flight.getBookedSeatsBusinessClass() - cancelledCount));
-            } else if ("EXECUTIVE".equals(category)) {
-                flight.setBookedSeatsExecutiveClass(Math.max(0, flight.getBookedSeatsExecutiveClass() - cancelledCount));
-            }
-            flightRepository.save(flight);
-        }
-
         // Calculate Proportional Refund based on days prior to travel: <2 days (max 20%), 2-19 days (max 40%), >=20 days (max 75%)
         long daysPrior = ChronoUnit.DAYS.between(LocalDate.now(), booking.getDateOfTravel());
         double refundPct = 20.0;
@@ -413,22 +390,6 @@ public class BookingService {
         List<Booking> activeBookings = bookingRepository.findByFlightIdAndDateOfTravelAndBookingStatusNot(
                 flightId, dateOfTravel, "CANCELLED"
         );
-
-        Flight flight = flightRepository.findById(flightId).orElse(null);
-        if (flight != null) {
-            for (Booking b : activeBookings) {
-                int seats = b.getNoOfSeats() != null ? b.getNoOfSeats() : 1;
-                String cat = b.getSeatCategory() != null ? b.getSeatCategory().toUpperCase() : "ECONOMY";
-                if ("ECONOMY".equals(cat)) {
-                    flight.setBookedSeatsEconomyClass(Math.max(0, (flight.getBookedSeatsEconomyClass() != null ? flight.getBookedSeatsEconomyClass() : 0) - seats));
-                } else if ("BUSINESS".equals(cat)) {
-                    flight.setBookedSeatsBusinessClass(Math.max(0, (flight.getBookedSeatsBusinessClass() != null ? flight.getBookedSeatsBusinessClass() : 0) - seats));
-                } else if ("EXECUTIVE".equals(cat)) {
-                    flight.setBookedSeatsExecutiveClass(Math.max(0, (flight.getBookedSeatsExecutiveClass() != null ? flight.getBookedSeatsExecutiveClass() : 0) - seats));
-                }
-            }
-            flightRepository.save(flight);
-        }
 
         for (Booking b : activeBookings) {
             b.setBookingStatus("CANCELLED_BY_ADMIN");
