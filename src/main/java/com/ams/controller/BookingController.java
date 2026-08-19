@@ -63,6 +63,18 @@ public class BookingController {
         return ResponseEntity.ok(available);
     }
 
+    @GetMapping("/flight-date-seats")
+    public ResponseEntity<java.util.Map<String, Integer>> getAvailableSeatsForFlightAndDate(
+            @RequestParam Long flightId,
+            @RequestParam String date) {
+        java.time.LocalDate travelDate = java.time.LocalDate.parse(date);
+        java.util.Map<String, Integer> map = new java.util.HashMap<>();
+        map.put("ECONOMY", bookingService.getAvailableSeats(flightId, travelDate, "ECONOMY"));
+        map.put("BUSINESS", bookingService.getAvailableSeats(flightId, travelDate, "BUSINESS"));
+        map.put("EXECUTIVE", bookingService.getAvailableSeats(flightId, travelDate, "EXECUTIVE"));
+        return ResponseEntity.ok(map);
+    }
+
     @PostMapping("/admin/cancel-flight-date")
     public ResponseEntity<List<Booking>> cancelFlightDate(
             @RequestParam Long flightId,
